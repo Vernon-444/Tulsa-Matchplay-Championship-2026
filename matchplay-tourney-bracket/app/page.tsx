@@ -1,24 +1,30 @@
-import BracketView from "@/components/BracketView";
+import BracketLoader from "@/components/BracketLoader";
+import { TULSA_2026_PLAYERS } from "@/data/tulsa-2026-players";
 import { generate64PlayerDoubleElimBracket } from "@/lib/bracket-data-64";
 
 export default function Home() {
-  const matches = generate64PlayerDoubleElimBracket();
+  const matches = generate64PlayerDoubleElimBracket(TULSA_2026_PLAYERS);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <h1 className="text-center text-xl font-semibold text-slate-900">
-          Tulsa Matchplay Disc Golf Championship 2026
-        </h1>
-        <p className="text-center text-sm text-slate-500">
-          64-player double elimination bracket
-        </p>
-      </header>
-      <main className="p-4">
-        <div className="overflow-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-          <BracketView matches={matches} />
+    <>
+      <section
+        id="hero"
+        className="bg-[#162B49] px-4 py-10 text-center"
+        aria-label="Hero"
+      >
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-2xl font-bold text-[#F8F1E0] sm:text-3xl">
+            Tulsa Matchplay Disc Golf Championship 2026
+          </h2>
+          <p className="mt-2 text-[#F8F1E0]/90">
+            64-player double elimination · Scroll below to explore the bracket
+          </p>
         </div>
+      </section>
+
+      <main id="brackets" className="mx-auto w-[90vw] max-w-[90vw] px-2 py-6 md:w-full md:max-w-[75vw] md:px-4">
+        <BracketLoader matches={matches} />
       </main>
-    </div>
+    </>
   );
 }

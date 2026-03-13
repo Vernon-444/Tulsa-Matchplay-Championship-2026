@@ -189,3 +189,42 @@ export function generate64PlayerDoubleElimBracket(
 
   return { upper, lower };
 }
+
+/** Tournament start (first week). Each round gets one week. */
+const TOURNAMENT_START = new Date(2026, 2, 8); // March 8, 2026
+
+/**
+ * Returns the date range string for a given week (1-based), without year.
+ * Week 1 = 03/08 - 03/14, Week 2 = 03/15 - 03/21, etc.
+ */
+export function getWeekDateRange(weekNumber: number): string {
+  const start = new Date(TOURNAMENT_START);
+  start.setDate(start.getDate() + (weekNumber - 1) * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const fmt = (d: Date) =>
+    `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+  return `${fmt(start)} - ${fmt(end)}`;
+}
+
+/**
+ * Returns match arrays for separate Winner's and Loser's bracket views.
+ * Championship (WB winner vs LB winner) is not included; that will be a separate component.
+ * - Winners bracket: upper bracket, with the last match labeled "Winner's Bracket Final"
+ * - Losers bracket: lower bracket, with LB Final's nextMatchId set to null so it doesn't point to the championship
+ */
+export function getWinnersAndLosersBracketMatches(
+  matches: DoubleElimMatches
+): { winnersBracketMatches: BracketMatch[]; losersBracketMatches: BracketMatch[] } {
+  const winnersBracketMatches = matches.upper.map((m) =>
+    m.id === 63
+      ? { ...m, name: "Winner's Bracket Final" }
+      : { ...m }
+  );
+  const losersBracketMatches = matches.lower.map((m) =>
+    m.id === 147
+      ? { ...m, nextMatchId: null, name: "Loser's Bracket Final" }
+      : { ...m }
+  );
+  return { winnersBracketMatches, losersBracketMatches };
+}
