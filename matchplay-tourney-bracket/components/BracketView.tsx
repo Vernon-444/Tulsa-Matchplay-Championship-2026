@@ -27,29 +27,62 @@ const TULSA = {
 } as const;
 
 const tournamentTheme = createTheme({
-  textColor: { main: TULSA.cream, highlighted: TULSA.cream, dark: TULSA.cream },
-  matchBackground: { wonColor: "#1e3658", lostColor: TULSA.blue },
+  textColor: { main: TULSA.blue, highlighted: TULSA.blue, dark: TULSA.blue },
+  matchBackground: { wonColor: "#e8e4dc", lostColor: TULSA.cream },
   score: {
-    background: { wonColor: "#1e3658", lostColor: TULSA.blue },
-    text: { highlightedWonColor: TULSA.red, highlightedLostColor: TULSA.cream },
+    background: { wonColor: "#e8e4dc", lostColor: TULSA.cream },
+    text: { highlightedWonColor: TULSA.red, highlightedLostColor: TULSA.blue },
   },
   border: {
-    color: TULSA.yellow,
+    color: TULSA.blue,
     highlightedColor: TULSA.red,
   },
   roundHeaders: { background: TULSA.blue },
-  canvasBackground: TULSA.blue,
+  canvasBackground: TULSA.cream,
 });
 
-/** Wraps Match and dims non-current rounds so the current round stays yellow/bright. */
-function matchWithRoundFocus(currentRound: string) {
+export interface AdminControls {
+  onSetWinner: (matchId: number, winnerSlot: 0 | 1) => void;
+  onUndo: () => void;
+  canUndo: boolean;
+}
+
+/** Wraps Match and dims non-current rounds. In admin mode, clicking a player sets them as winner. */
+function matchWithRoundFocus(
+  currentRound: string,
+  adminControls?: AdminControls
+) {
   return function MatchWithRoundFocus(props: ComponentProps<typeof Match>) {
+    const { match } = props;
     const isCurrentRound =
-      props.match.tournamentRoundText === currentRound;
+      match.tournamentRoundText === currentRound;
     const opacity = isCurrentRound ? 1 : 0.35;
+    const p0 = match.participants[0];
+    const p1 = match.participants[1];
+    const bothFilled =
+      p0?.name && p1?.name && p0.name !== "TBD" && p1.name !== "TBD";
+    const noResult =
+      bothFilled &&
+      p0?.isWinner !== true &&
+      p1?.isWinner !== true;
+    const clickToSetWinner = adminControls && noResult;
+
+    const handlePartyClick =
+      clickToSetWinner && adminControls
+        ? (party: { id?: string | number }, _partyWon: boolean) => {
+            const slot = match.participants[0]?.id === party?.id ? 0 : 1;
+            adminControls.onSetWinner(Number(match.id), slot as 0 | 1);
+          }
+        : props.onPartyClick;
+
     return (
-      <div style={{ opacity }}>
-        <Match {...props} />
+      <div
+        style={{
+          opacity,
+          cursor: clickToSetWinner ? "pointer" : undefined,
+        }}
+      >
+        <Match {...props} onPartyClick={handlePartyClick} />
       </div>
     );
   };
@@ -61,13 +94,13 @@ const ROUND_HEADER_HEIGHT = 52;
 const winnersBracketOptions = {
   style: {
     roundHeader: {
-      backgroundColor: TULSA.blueDark,
+      backgroundColor: TULSA.blue,
       fontColor: TULSA.cream,
       height: ROUND_HEADER_HEIGHT,
       roundTextGenerator: (roundOneBased: number) =>
         `Round ${roundOneBased}\n${getWeekDateRange(roundOneBased)}`,
     },
-    connectorColor: TULSA.yellow,
+    connectorColor: TULSA.blue,
     connectorColorHighlight: TULSA.red,
   },
 };
@@ -75,13 +108,13 @@ const winnersBracketOptions = {
 const losersBracketOptions = {
   style: {
     roundHeader: {
-      backgroundColor: TULSA.blueDark,
+      backgroundColor: TULSA.blue,
       fontColor: TULSA.cream,
       height: ROUND_HEADER_HEIGHT,
       roundTextGenerator: (roundOneBased: number) =>
         `Round ${roundOneBased}\n${getWeekDateRange(roundOneBased + 1)}`,
     },
-    connectorColor: TULSA.yellow,
+    connectorColor: TULSA.blue,
     connectorColorHighlight: TULSA.red,
   },
 };
@@ -93,6 +126,8 @@ interface BracketViewProps {
   matches: DoubleElimMatches;
   /** Current round number as string (e.g. "1"). This round stays bright; others are dimmed. */
   currentRound?: string;
+  /** When set, shows "Top wins" / "Bottom wins" on each match and enables undo. */
+  adminControls?: AdminControls;
 }
 
 interface ResponsiveBracketProps {
@@ -144,8 +179,8 @@ function ResponsiveBracket({
     [key: string]: unknown;
   }) => (
     <SVGViewer
-      background={TULSA.blue}
-      SVGBackground={TULSA.blue}
+      background={TULSA.cream}
+      SVGBackground={TULSA.cream}
       width={viewport.width}
       height={viewport.height}
       bracketWidth={bracketWidth}
@@ -178,18 +213,34 @@ function ResponsiveBracket({
 export default function BracketView({
   matches,
   currentRound = "1",
+  adminControls,
 }: BracketViewProps) {
   const { winnersBracketMatches, losersBracketMatches } =
     getWinnersAndLosersBracketMatches(matches);
 
   const sharedBracketProps = {
-    matchComponent: matchWithRoundFocus(currentRound),
+    matchComponent: matchWithRoundFocus(currentRound, adminControls),
     theme: tournamentTheme,
     currentRound,
   };
 
   return (
     <div className="flex w-full flex-col gap-6">
+      {adminControls && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={adminControls.onUndo}
+            disabled={!adminControls.canUndo}
+            className="rounded-lg border-2 border-[#C6202E] px-4 py-2 text-sm font-medium text-[#C6202E] transition-colors hover:bg-[#C6202E]/10 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Undo last result
+          </button>
+          <span className="text-sm text-[#162B49]/70">
+            Click a player in a match to set them as the winner (saves immediately). Undo removes the most recent result.
+          </span>
+        </div>
+      )}
       <ResponsiveBracket
         title="Winner's Bracket"
         matches={winnersBracketMatches}

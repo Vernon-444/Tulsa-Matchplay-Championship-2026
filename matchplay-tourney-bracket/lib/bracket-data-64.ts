@@ -11,6 +11,14 @@ export interface Participant {
   isWinner?: boolean;
   status?: string | null;
   name?: string;
+  /** Displayed on the right side of the match cell when no result yet */
+  rating?: number | string;
+}
+
+export interface Player {
+  firstName: string;
+  lastName: string;
+  rating: number;
 }
 
 export interface BracketMatch {
@@ -61,7 +69,7 @@ function createMatch(
 }
 
 export function generate64PlayerDoubleElimBracket(
-  playerNames?: string[]
+  players?: Player[]
 ): DoubleElimMatches {
   const upper: BracketMatch[] = [];
   const lower: BracketMatch[] = [];
@@ -172,16 +180,18 @@ export function generate64PlayerDoubleElimBracket(
     createMatch(147, "LB Final", "6", GF_ID)
   );
 
-  // Optionally seed first round with player names (64 slots = UB R1)
-  if (playerNames && playerNames.length > 0) {
-    for (let i = 0; i < Math.min(64, playerNames.length); i++) {
+  // Optionally seed first round with players (64 slots = UB R1)
+  if (players && players.length > 0) {
+    for (let i = 0; i < Math.min(64, players.length); i++) {
+      const p = players[i];
       const ubMatchIndex = Math.floor(i / 2);
       const slot = i % 2;
       if (upper[ubMatchIndex]?.participants[slot]) {
         upper[ubMatchIndex].participants[slot] = {
           ...emptyParticipant(),
           id: `seed-${i + 1}`,
-          name: playerNames[i],
+          name: `${p.firstName} ${p.lastName}`,
+          rating: p.rating,
         };
       }
     }

@@ -6,10 +6,10 @@
   --tulsa-cream: #f8f1e0;
   --tulsa-yellow: #ebad21;
   --tulsa-red: #c6202e;
-  /* Header and main body: dark grey so Tulsa blue panels stand out */
-  --page-bg: #272323;
+  /* Light theme: cream background, Tulsa blue text */
+  --page-bg: var(--tulsa-cream);
   --background: var(--page-bg);
-  --foreground: var(--tulsa-cream);
+  --foreground: var(--tulsa-blue);
 }
 
 @theme inline {
@@ -17,6 +17,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -28,7 +32,7 @@ body {
 /* Modern scrollbars for bracket windows (Tulsa colors) */
 .bracket-window-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--tulsa-yellow) var(--tulsa-blue);
+  scrollbar-color: var(--tulsa-blue) var(--tulsa-cream);
 }
 
 .bracket-window-scroll::-webkit-scrollbar {
@@ -37,35 +41,47 @@ body {
 }
 
 .bracket-window-scroll::-webkit-scrollbar-track {
-  background: var(--tulsa-blue);
+  background: var(--tulsa-cream);
   border-radius: 4px;
 }
 
 .bracket-window-scroll::-webkit-scrollbar-thumb {
-  background: var(--tulsa-yellow);
+  background: var(--tulsa-blue);
   border-radius: 5px;
-  border: 2px solid var(--tulsa-blue);
+  border: 2px solid var(--tulsa-cream);
 }
 
 .bracket-window-scroll::-webkit-scrollbar-thumb:hover {
-  background: #f0b82a;
+  background: #1e3658;
 }
 
-/* Glitter / sparkle animation for featured nav link (cream only, runs when menu is open) */
+/* Glitter: little gold stars (runs when menu is open) */
 @keyframes glitter-twinkle {
-  0%, 100% { opacity: 0.35; transform: scale(0.7); }
-  50% { opacity: 1; transform: scale(1.15); }
+  0%, 100% { opacity: 0.4; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(0.9); }
 }
 
 .glitter-particle {
   position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--tulsa-cream);
-  box-shadow: 0 0 8px var(--tulsa-cream);
+  width: 6px;
+  height: 6px;
+  background: var(--tulsa-yellow);
+  box-shadow: 0 0 6px rgba(235, 173, 33, 0.6);
   pointer-events: none;
   animation: glitter-twinkle 2s ease-in-out infinite;
+  /* 5-pointed star via clip-path */
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
 }
 .glitter-particle:nth-child(1) { left: 8%; top: 35%; animation-delay: 0s; }
 .glitter-particle:nth-child(2) { left: 22%; top: 60%; animation-delay: 0.25s; }
@@ -80,6 +96,24 @@ body {
 .glitter-particle:nth-child(11) { left: 30%; top: 85%; animation-delay: 0.65s; }
 .glitter-particle:nth-child(12) { left: 85%; top: 45%; animation-delay: 0.85s; }
 
+/* Metallic gold gradient behind Matchplay Score Keeper when hovered/focused */
+.scorekeeper-highlight {
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.scorekeeper-highlight:hover,
+.scorekeeper-highlight:focus-visible {
+  background: linear-gradient(
+    135deg,
+    #b8860b 0%,
+    #d4af37 25%,
+    #f4e4bc 50%,
+    #d4af37 75%,
+    #b8860b 100%
+  ) !important;
+  color: #162b49;
+  background-size: 200% 200%;
+}
+
 .bracket-window-scroll::-webkit-scrollbar-corner {
-  background: var(--tulsa-blue);
+  background: var(--tulsa-cream);
 }
