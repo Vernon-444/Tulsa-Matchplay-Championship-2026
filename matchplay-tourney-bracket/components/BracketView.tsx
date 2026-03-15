@@ -12,6 +12,7 @@ import type {
   DoubleElimMatches,
 } from "@/lib/bracket-data-64";
 import {
+  getFocusedRoundsByBracket,
   getWeekDateRange,
   getWinnersAndLosersBracketMatches,
 } from "@/lib/bracket-data-64";
@@ -47,16 +48,15 @@ export interface AdminControls {
   canUndo: boolean;
 }
 
-/** Wraps Match and dims non-current rounds. In admin mode, clicking a player sets them as winner. */
+/** Wraps Match: focused round full opacity, unfocused dimmed. Focus is per bracket (upper vs lower). */
 function matchWithRoundFocus(
-  currentRound: string,
+  isRoundFocused: (round: string, matchId: number) => boolean,
   adminControls?: AdminControls
 ) {
   return function MatchWithRoundFocus(props: ComponentProps<typeof Match>) {
     const { match } = props;
-    const isCurrentRound =
-      match.tournamentRoundText === currentRound;
-    const opacity = isCurrentRound ? 1 : 0.35;
+    const focused = isRoundFocused(match.tournamentRoundText ?? "", Number(match.id));
+    const opacity = focused ? 1 : 0.35;
     const p0 = match.participants[0];
     const p1 = match.participants[1];
     const bothFilled =
@@ -122,11 +122,18 @@ const losersBracketOptions = {
 /** Fallback viewport size before container is measured. */
 const DEFAULT_VIEWPORT = { width: 900, height: 500 };
 
+/**
+ * Default pan position [x, y] for the bracket viewer (SVG coordinates).
+ * Override via ResponsiveBracket defaultStartAt to show a specific area on load.
+ */
+const DEFAULT_BRACKET_START_AT: [number, number] = [0, 0];
+
+/** Default zoom level: < 1 = zoomed out, 1 = fit, > 1 = zoomed in. Slightly zoomed out so more of the bracket is visible. */
+const DEFAULT_BRACKET_ZOOM = 0.75;
+
 interface BracketViewProps {
   matches: DoubleElimMatches;
-  /** Current round number as string (e.g. "1"). This round stays bright; others are dimmed. */
-  currentRound?: string;
-  /** When set, shows "Top wins" / "Bottom wins" on each match and enables undo. */
+  /** When set, shows "Top wins" / "Bottom wins" on each match and enables undo. Current round is always derived from match results (first round with an incomplete match). */
   adminControls?: AdminControls;
 }
 
@@ -137,8 +144,11 @@ interface ResponsiveBracketProps {
   sharedBracketProps: {
     matchComponent: ReturnType<typeof matchWithRoundFocus>;
     theme: ReturnType<typeof createTheme>;
-    currentRound: string;
   };
+  /** Override the viewer's initial pan position [x, y]. Omit to use the bracket library default. */
+  defaultStartAt?: [number, number];
+  /** Initial zoom: < 1 = zoomed out, 1 = default fit, > 1 = zoomed in. Omit to use DEFAULT_BRACKET_ZOOM. */
+  defaultZoom?: number;
 }
 
 /** One bracket panel with a viewer that fills its container (bracket-window-scroll). */
@@ -147,6 +157,8 @@ function ResponsiveBracket({
   matches,
   options,
   sharedBracketProps,
+  defaultStartAt,
+  defaultZoom = DEFAULT_BRACKET_ZOOM,
 }: ResponsiveBracketProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState(DEFAULT_VIEWPORT);
@@ -165,11 +177,13 @@ function ResponsiveBracket({
     return () => ro.disconnect();
   }, []);
 
+  const effectiveStartAt = defaultStartAt ?? DEFAULT_BRACKET_START_AT;
+
   const svgWrapper = ({
     children,
     bracketWidth,
     bracketHeight,
-    startAt,
+    startAt: _libraryStartAt,
     ...rest
   }: {
     children: React.ReactNode;
@@ -185,7 +199,8 @@ function ResponsiveBracket({
       height={viewport.height}
       bracketWidth={bracketWidth}
       bracketHeight={bracketHeight}
-      startAt={startAt}
+      startAt={effectiveStartAt}
+      initialScale={defaultZoom}
       {...rest}
     >
       {children}
@@ -196,8 +211,7 @@ function ResponsiveBracket({
     <BracketWindow title={title}>
       <div
         ref={containerRef}
-        className="h-full w-full min-h-[500px]"
-        style={{ minHeight: 500 }}
+        className="h-full w-full min-h-[340px] md:min-h-[700px]"
       >
         <SingleEliminationBracket
           matches={matches}
@@ -210,18 +224,27 @@ function ResponsiveBracket({
   );
 }
 
+/** Upper bracket match ids are 1..63; lower bracket 101+. */
+function isUpperBracketMatch(matchId: number): boolean {
+  return matchId >= 1 && matchId <= 63;
+}
+
 export default function BracketView({
   matches,
-  currentRound = "1",
   adminControls,
 }: BracketViewProps) {
+  const { upper: focusedRoundsUpper, lower: focusedRoundsLower } =
+    getFocusedRoundsByBracket(matches);
+  const isRoundFocused = (round: string, matchId: number) =>
+    isUpperBracketMatch(matchId)
+      ? focusedRoundsUpper.has(round)
+      : focusedRoundsLower.has(round);
   const { winnersBracketMatches, losersBracketMatches } =
     getWinnersAndLosersBracketMatches(matches);
 
   const sharedBracketProps = {
-    matchComponent: matchWithRoundFocus(currentRound, adminControls),
+    matchComponent: matchWithRoundFocus(isRoundFocused, adminControls),
     theme: tournamentTheme,
-    currentRound,
   };
 
   return (
@@ -241,18 +264,24 @@ export default function BracketView({
           </span>
         </div>
       )}
-      <ResponsiveBracket
-        title="Winner's Bracket"
-        matches={winnersBracketMatches}
-        options={winnersBracketOptions}
-        sharedBracketProps={sharedBracketProps}
-      />
-      <ResponsiveBracket
-        title="Loser's Bracket"
-        matches={losersBracketMatches}
-        options={losersBracketOptions}
-        sharedBracketProps={sharedBracketProps}
-      />
+      <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="min-w-0">
+          <ResponsiveBracket
+            title="Winner's Bracket"
+            matches={winnersBracketMatches}
+            options={winnersBracketOptions}
+            sharedBracketProps={sharedBracketProps}
+          />
+        </div>
+        <div className="min-w-0">
+          <ResponsiveBracket
+            title="Loser's Bracket"
+            matches={losersBracketMatches}
+            options={losersBracketOptions}
+            sharedBracketProps={sharedBracketProps}
+          />
+        </div>
+      </div>
     </div>
   );
 }

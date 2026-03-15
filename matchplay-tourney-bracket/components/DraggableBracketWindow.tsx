@@ -14,12 +14,12 @@ export default function BracketWindow({
   children,
 }: BracketWindowProps) {
   return (
-    <div className="bracket-window flex w-full flex-col rounded-lg border-2 border-[#162B49] bg-[var(--page-bg)] shadow-xl min-h-[480px] max-h-[min(105vh,780px)]">
-      <div className="flex shrink-0 items-center justify-between border-b border-[#162B49] bg-[#162B49] px-3 py-2 text-[#F8F1E0]">
-        <span className="text-sm font-semibold">{title}</span>
+    <div className="bracket-window flex w-full flex-col rounded-lg border-2 border-[#162B49] bg-[var(--page-bg)] shadow-xl min-h-[400px] max-h-[min(75vh,520px)] md:min-h-[740px] md:max-h-[min(90vh,1120px)]">
+      <div className="flex min-h-[44px] shrink-0 items-center justify-between border-b border-[#162B49] bg-[#162B49] px-2 py-1.5 text-[#F8F1E0] md:min-h-[72px] md:px-3 md:py-2">
+        <span className="text-xs font-semibold md:text-sm">{title}</span>
       </div>
       <div className="bracket-window-scroll min-h-0 flex-1 overflow-auto p-2">
-        <div className="h-full w-full min-h-[420px]">
+        <div className="h-full w-full min-h-[260px] md:min-h-[680px]">
           {children}
         </div>
       </div>

@@ -1,8 +1,9 @@
 import AdminBracketClient from "@/components/AdminBracketClient";
+import AdminHighlightPicker from "@/components/AdminHighlightPicker";
 import { TULSA_2026_PLAYERS } from "@/data/tulsa-2026-players";
 import { applyAllResults } from "@/lib/bracket-apply-results";
-import { generate64PlayerDoubleElimBracket } from "@/lib/bracket-data-64";
-import { getMatchResults } from "@/lib/supabase/admin";
+import { generate64PlayerDoubleElimBracket, getCurrentRoundNumber } from "@/lib/bracket-data-64";
+import { getHighlightMatchIds, getMatchResults } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -17,14 +18,22 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  const [results, baseBracket] = await Promise.all([
-    getMatchResults(),
-    Promise.resolve(generate64PlayerDoubleElimBracket(TULSA_2026_PLAYERS)),
-  ]);
+  let results: Awaited<ReturnType<typeof getMatchResults>> = [];
+  let highlightMatchIds: Awaited<ReturnType<typeof getHighlightMatchIds>> = { wb: [], lb: [] };
+  try {
+    [results, highlightMatchIds] = await Promise.all([
+      getMatchResults(),
+      getHighlightMatchIds(),
+    ]);
+  } catch {
+    // highlight_matches table may not exist
+  }
+  const baseBracket = generate64PlayerDoubleElimBracket(TULSA_2026_PLAYERS);
   const matches = applyAllResults(baseBracket, results);
+  const currentRound = getCurrentRoundNumber();
 
   return (
-    <div className="mx-auto max-w-[90vw] px-4 py-8 md:max-w-[75vw]">
+    <div className="mx-auto w-[90vw] max-w-[90vw] px-2 py-8 md:w-full md:max-w-[50vw] md:px-4">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-[#162B49]">Admin</h1>
@@ -49,6 +58,12 @@ export default async function AdminPage() {
           </form>
         </div>
       </div>
+
+      <AdminHighlightPicker
+        matches={matches}
+        initialMatchIds={highlightMatchIds}
+        currentRound={currentRound}
+      />
 
       <AdminBracketClient
         initialMatches={matches}

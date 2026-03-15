@@ -94,7 +94,21 @@ export default function Navbar() {
         onClick={() => handleScrollTo("brackets")}
         className={navLinkBase}
       >
-        Brackets / Results
+        Brackets
+      </button>
+      <button
+        type="button"
+        onClick={() => handleScrollTo("highlight-matches")}
+        className={navLinkBase}
+      >
+        Highlight Matches
+      </button>
+      <button
+        type="button"
+        onClick={() => handleScrollTo("results")}
+        className={navLinkBase}
+      >
+        Results
       </button>
       <Link
         href="/login"

@@ -217,6 +217,112 @@ export function getWeekDateRange(weekNumber: number): string {
   return `${fmt(start)} - ${fmt(end)}`;
 }
 
+/** Current round (1–6) based on today's date. Round 1 = first week, etc. */
+export function getCurrentRoundNumber(now: Date = new Date()): number {
+  const start = new Date(TOURNAMENT_START);
+  start.setHours(0, 0, 0, 0);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const diffMs = today.getTime() - start.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  const week = diffDays < 0 ? 1 : Math.floor(diffDays / 7) + 1;
+  return Math.min(6, Math.max(1, week));
+}
+
+/**
+ * True when this match has both players filled and a decided winner (one W, one L).
+ * Participants advanced from a previous match keep their old isWinner, so we must
+ * require both slots to be non-TBD before treating the match as complete.
+ */
+function matchHasResult(m: BracketMatch): boolean {
+  const p0 = m.participants[0];
+  const p1 = m.participants[1];
+  const bothFilled =
+    p0?.name && p1?.name && p0.name !== "TBD" && p1.name !== "TBD";
+  if (!bothFilled) return false;
+  return (
+    (p0?.isWinner === true && p1?.isWinner === false) ||
+    (p0?.isWinner === false && p1?.isWinner === true)
+  );
+}
+
+/** True when a participant slot has a real player (non-empty, not TBD). */
+function hasRealPlayer(name: string | undefined): boolean {
+  const n = typeof name === "string" ? name.trim() : "";
+  return n.length > 0 && n !== "TBD";
+}
+
+/** True when this match has both participants filled (no TBD, no empty). */
+function matchIsFullyPopulated(m: BracketMatch): boolean {
+  const p0 = m.participants[0];
+  const p1 = m.participants[1];
+  return hasRealPlayer(p0?.name) && hasRealPlayer(p1?.name);
+}
+
+/** True when every match in this round has both players (no TBD) in the given bracket. */
+function roundIsFullyPopulated(
+  bracketMatches: BracketMatch[],
+  round: string
+): boolean {
+  const inRound = bracketMatches.filter((m) => m.tournamentRoundText === round);
+  return inRound.length > 0 && inRound.every((m) => matchIsFullyPopulated(m));
+}
+
+/** True when at least one match in this round has at least one real player (any slot non-TBD). */
+function roundHasAnyPlayer(
+  bracketMatches: BracketMatch[],
+  round: string
+): boolean {
+  const inRound = bracketMatches.filter((m) => m.tournamentRoundText === round);
+  return inRound.some((m) => {
+    const p0 = m.participants[0];
+    const p1 = m.participants[1];
+    return hasRealPlayer(p0?.name) || hasRealPlayer(p1?.name);
+  });
+}
+
+/** True when at least one match in this round has no winner/loser yet. */
+function roundHasIncompleteMatch(
+  bracketMatches: BracketMatch[],
+  round: string
+): boolean {
+  const inRound = bracketMatches.filter((m) => m.tournamentRoundText === round);
+  return inRound.some((m) => !matchHasResult(m));
+}
+
+/**
+ * A round is focused when it has real players and at least one match without
+ * a result (no W/L yet). So R1 stays active until every R1 match has a winner;
+ * R2 is active when it has players and any R2 match is still undecided.
+ */
+function getFocusedRoundsForBracket(bracketMatches: BracketMatch[]): Set<string> {
+  const ROUNDS = ["1", "2", "3", "4", "5", "6"];
+  const focused = new Set<string>();
+  for (const round of ROUNDS) {
+    if (
+      roundHasAnyPlayer(bracketMatches, round) &&
+      roundHasIncompleteMatch(bracketMatches, round)
+    ) {
+      focused.add(round);
+    }
+  }
+  return focused;
+}
+
+/**
+ * Focused rounds per bracket (can be multiple: e.g. R1 and R2 both active).
+ * Winner's and Loser's brackets are evaluated separately.
+ */
+export function getFocusedRoundsByBracket(matches: DoubleElimMatches): {
+  upper: Set<string>;
+  lower: Set<string>;
+} {
+  return {
+    upper: getFocusedRoundsForBracket(matches.upper),
+    lower: getFocusedRoundsForBracket(matches.lower),
+  };
+}
+
 /**
  * Returns match arrays for separate Winner's and Loser's bracket views.
  * Championship (WB winner vs LB winner) is not included; that will be a separate component.

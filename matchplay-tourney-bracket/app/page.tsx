@@ -1,22 +1,39 @@
 import BracketLoader from "@/components/BracketLoader";
+import HighlightMatchesSection from "@/components/HighlightMatchesSection";
+import ResultsSection from "@/components/ResultsSection";
 import { TULSA_2026_PLAYERS } from "@/data/tulsa-2026-players";
 import { applyAllResults } from "@/lib/bracket-apply-results";
-import { generate64PlayerDoubleElimBracket } from "@/lib/bracket-data-64";
-import { getMatchResults } from "@/lib/supabase/admin";
+import { generate64PlayerDoubleElimBracket, getCurrentRoundNumber } from "@/lib/bracket-data-64";
+import { getUpsetsGroupedByWeek } from "@/lib/highlights-and-results";
+import {
+  getHighlightMatchIds,
+  getMatchResults,
+  getMatchResultsWithDates,
+} from "@/lib/supabase/admin";
 import Image from "next/image";
 import Link from "next/link";
 
 import bannerImage from "./images/matchplay-banner.jpg";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const baseBracket = generate64PlayerDoubleElimBracket(TULSA_2026_PLAYERS);
   let results: { matchId: number; winnerSlot: 0 | 1 }[] = [];
+  let resultsWithDates: Awaited<ReturnType<typeof getMatchResultsWithDates>> = [];
+  let highlightMatchIds: Awaited<ReturnType<typeof getHighlightMatchIds>> = { wb: [], lb: [] };
   try {
-    results = await getMatchResults();
+    [results, resultsWithDates, highlightMatchIds] = await Promise.all([
+      getMatchResults(),
+      getMatchResultsWithDates(),
+      getHighlightMatchIds(),
+    ]);
   } catch {
-    // Table may not exist yet or Supabase not configured; show bracket without results
+    // Tables may not exist yet or Supabase not configured
   }
   const matches = applyAllResults(baseBracket, results);
+  const weeks = getUpsetsGroupedByWeek(matches, resultsWithDates);
+  const currentRound = getCurrentRoundNumber();
 
   return (
     <>
@@ -28,30 +45,32 @@ export default async function Home() {
         <div className="mx-auto max-w-4xl">
           
 
-          <div className="mx-auto mt-4 w-full max-w-[1000px] md:w-[60vw]">
-            <Image
-              src={bannerImage}
-              alt="Tulsa Matchplay Championships"
-              width={bannerImage.width}
-              height={bannerImage.height}
-              className="w-full h-auto"
-              sizes="(min-width: 768px) 60vw, 100vw"
-              priority
-            />
+          <div className="mt-4 flex justify-center">
+            <div className="w-full max-w-[1000px] md:w-[60vw]">
+              <Image
+                src={bannerImage}
+                alt="Tulsa Matchplay Championships"
+                width={bannerImage.width}
+                height={bannerImage.height}
+                className="w-full h-auto block"
+                sizes="(min-width: 768px) 60vw, 100vw"
+                priority
+              />
+            </div>
           </div>
 
           <p className="mt-6 text-[#F8F1E0]/90">
             64-player double elimination. Check out the{" "}
             <a
               href="#brackets"
-              className="inline-flex rounded border border-[#EBAD21]/60 bg-[#EBAD21]/20 px-2 py-1 font-medium text-[#F8F1E0] transition hover:bg-[#EBAD21]/30"
+              className="px-2 py-0.5 font-medium text-[#F8F1E0] underline decoration-[#F8F1E0]/40 underline-offset-2 bg-[#2d4a6b] transition hover:decoration-[#F8F1E0]/80 hover:bg-[#3d5f82]"
             >
               brackets
             </a>{" "}
             below and use the{" "}
             <Link
               href="/scorekeeper"
-              className="inline-flex rounded border border-[#EBAD21]/60 bg-[#EBAD21]/20 px-2 py-1 font-medium text-[#F8F1E0] transition hover:bg-[#EBAD21]/30"
+              className="px-2 py-0.5 font-medium text-[#F8F1E0] underline decoration-[#F8F1E0]/40 underline-offset-2 bg-[#2d4a6b] transition hover:decoration-[#F8F1E0]/80 hover:bg-[#3d5f82]"
             >
               Matchplay Score Keeper
             </Link>{" "}
@@ -66,36 +85,40 @@ export default async function Home() {
               <li>The lower rated player picks the course.</li>
               <li>
                 <span className="font-semibold">Bonus Strokes:</span>
-                <table className="my-2 w-full max-w-xs border-collapse text-sm">
-                  <thead>
-                    <tr>
-                      <th className="border-b border-[#EBAD21]/50 px-2 py-1 text-left text-[#F8F1E0]/80">Rating</th>
-                      <th className="border-b border-[#EBAD21]/50 px-2 py-1 text-left text-[#F8F1E0]/80">Bonus Strokes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">{">= 950"}</td>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">+0.0</td>
-                    </tr>
-                    <tr>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">925-949</td>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">+0.5</td>
-                    </tr>
-                    <tr>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">900-924</td>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">+1.5</td>
-                    </tr>
-                    <tr>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">850-899</td>
-                      <td className="border-b border-[#EBAD21]/20 px-2 py-1">+2.5</td>
-                    </tr>
-                    <tr>
-                      <td className="px-2 py-1">{"=< 849"}</td>
-                      <td className="px-2 py-1">+3.5</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <br />
+                  Depending on the rating of the player, they will receive bonus stroke(s) at the start of the match. This helps level the playing field.<br />
+                <div className="flex justify-center">
+                  <table className="my-2 w-half max-w-xs border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="border-b border-[#EBAD21]/50 px-2 py-1 text-left text-[#F8F1E0]/80">Rating</th>
+                        <th className="border-b border-[#EBAD21]/50 px-2 py-1 text-center text-[#F8F1E0]/80">Bonus Strokes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1">{">= 950"}</td>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1 text-center">+0.0</td>
+                      </tr>
+                      <tr>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1">925-949</td>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1 text-center">+0.5</td>
+                      </tr>
+                      <tr>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1">900-924</td>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1 text-center">+1.5</td>
+                      </tr>
+                      <tr>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1">850-899</td>
+                        <td className="border-b border-[#EBAD21]/20 px-2 py-1 text-center">+2.5</td>
+                      </tr>
+                      <tr>
+                        <td className="px-2 py-1">{"=< 849"}</td>
+                        <td className="px-2 py-1 text-center">+3.5</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
                 If you tie, go to a playoff to decide the
                 winner. If you&apos;re both in a rating to get strokes, the
                 difference between preset strokes will be what the lower rated
@@ -128,8 +151,28 @@ export default async function Home() {
         </div>
       </section>
 
-      <main id="brackets" className="mx-auto w-[90vw] max-w-[90vw] px-2 py-6 md:w-full md:max-w-[75vw] md:px-4">
-        <BracketLoader matches={matches} />
+      <main className="flex flex-col gap-0">
+        <section
+          id="brackets"
+          className="mx-auto w-[90vw] max-w-[90vw] px-2 py-6 md:w-full md:max-w-[50vw] md:px-4"
+          aria-labelledby="brackets-heading"
+        >
+          <h2
+            id="brackets-heading"
+            className="mb-4 text-xl font-bold text-[#162B49]"
+          >
+            Brackets
+          </h2>
+          <BracketLoader matches={matches} />
+        </section>
+
+        <HighlightMatchesSection
+          matches={matches}
+          adminHighlightMatchIds={highlightMatchIds}
+          currentRound={currentRound}
+        />
+
+        <ResultsSection weeks={weeks} />
       </main>
 
       <footer className="grid grid-cols-1 items-center gap-4 border-t border-[#162B49]/20 bg-[var(--page-bg)] px-4 py-6 text-[#162B49] md:grid-cols-3">

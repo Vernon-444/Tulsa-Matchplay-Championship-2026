@@ -75,7 +75,6 @@ export default function AdminBracketClient({
     <div className="w-full">
       <BracketView
         matches={initialMatches}
-        currentRound="1"
         adminControls={adminControls}
       />
     </div>

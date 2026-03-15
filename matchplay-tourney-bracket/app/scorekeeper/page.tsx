@@ -246,7 +246,7 @@ export default function ScorekeeperPage() {
         </table>
       </div>
       <p className="mt-2 text-xs text-[#162B49]/60">
-        Hole winner = fewer strokes (tie = no point). Points = holes won + bonus strokes. Bonus from rating (≥950: 0, 925–949: 0.5, 900–924: 1.5, 850–899: 2.5, ≤849: 3.5). Light blue = winner of that hole.
+        Hole winner = fewer strokes (tie = no point). Points = num holes won + bonus strokes. Bonus from rating (≥950: 0, 925–949: 0.5, 900–924: 1.5, 850–899: 2.5, ≤849: 3.5).
       </p>
     </main>
   );
